@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BottegAI — Pipeline Prospect</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0f;--bg2:#111118;--bg3:#16161f;--card:#13131a;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);
+  --accent:#7c5cfc;--accent2:#a78bfa;--accent-glow:rgba(124,92,252,0.15);
+  --text:#f0f0f5;--muted:#8888a0;--mutedl:#6b6b80;
+  --green:#22c55e;--green-bg:rgba(34,197,94,0.12);
+  --yellow:#f59e0b;--yellow-bg:rgba(245,158,11,0.12);
+  --red:#ef4444;--red-bg:rgba(239,68,68,0.12);
+  --blue:#3b82f6;--blue-bg:rgba(59,130,246,0.12);
+  --purple:#a855f7;--purple-bg:rgba(168,85,247,0.12);
+}
+html{scroll-behavior:smooth}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.5;min-height:100vh}
+
+/* NAV */
+.topbar{position:sticky;top:0;z-index:100;background:rgba(10,10,15,0.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:.7rem 1.2rem;display:flex;align-items:center;justify-content:space-between;gap:.8rem}
+.topbar-brand{font-size:1.1rem;font-weight:700;letter-spacing:-.02em}
+.topbar-brand span{color:var(--accent2)}
+.topbar-sync{font-size:.7rem;color:var(--muted);display:flex;align-items:center;gap:.4rem}
+.topbar-sync .dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+.topbar-sync .dot.offline{background:var(--red)}
+.topbar-sync .dot.syncing{background:var(--yellow);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* TABS */
+.tabs{display:flex;gap:0;background:var(--bg2);border-bottom:1px solid var(--border);overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tab{padding:.7rem 1.2rem;font-size:.8rem;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all .2s}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--accent2);border-bottom-color:var(--accent)}
+
+/* DASHBOARD */
+.dashboard{padding:1rem}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.8rem;margin-bottom:1.2rem}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1rem;text-align:center;transition:border-color .2s}
+.stat-card:hover{border-color:rgba(124,92,252,0.3)}
+.stat-num{font-size:1.8rem;font-weight:800;line-height:1}
+.stat-label{font-size:.72rem;color:var(--muted);margin-top:.3rem}
+.stat-card.accent .stat-num{color:var(--accent2)}
+.stat-card.green .stat-num{color:var(--green)}
+.stat-card.yellow .stat-num{color:var(--yellow)}
+.stat-card.blue .stat-num{color:var(--blue)}
+.stat-card.red .stat-num{color:var(--red)}
+
+.funnel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.2rem;margin-bottom:1rem}
+.funnel h3{font-size:.85rem;font-weight:700;margin-bottom:.8rem;color:var(--accent2)}
+.funnel-bar-row{display:flex;align-items:center;gap:.6rem;margin-bottom:.5rem;font-size:.78rem}
+.funnel-bar-label{width:110px;text-align:right;color:var(--muted);flex-shrink:0}
+.funnel-bar-track{flex:1;height:22px;background:rgba(255,255,255,0.04);border-radius:6px;overflow:hidden}
+.funnel-bar-fill{height:100%;border-radius:6px;transition:width .5s ease;display:flex;align-items:center;padding:0 .5rem;font-size:.7rem;font-weight:700;color:#fff;min-width:fit-content}
+.funnel-bar-count{width:24px;text-align:center;font-weight:700}
+
+/* PROSPECT LIST */
+.prospect-section{padding:1rem}
+.toolbar{display:flex;gap:.6rem;margin-bottom:1rem;flex-wrap:wrap;align-items:center}
+.toolbar select,.toolbar input{background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:.45rem .7rem;border-radius:8px;font-size:.8rem;outline:none}
+.toolbar select:focus,.toolbar input:focus{border-color:var(--accent)}
+.toolbar input{flex:1;min-width:140px}
+.btn{padding:.5rem 1rem;border-radius:8px;font-size:.8rem;font-weight:600;cursor:pointer;border:none;transition:all .2s}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{opacity:.85;transform:translateY(-1px)}
+.btn-sm{padding:.3rem .7rem;font-size:.72rem}
+.btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border)}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent2)}
+.btn-danger{background:var(--red-bg);color:var(--red)}
+
+/* CARDS */
+.prospect-list{display:flex;flex-direction:column;gap:.6rem}
+.prospect-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1rem;transition:all .2s;cursor:pointer;position:relative;overflow:hidden}
+.prospect-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:3px 0 0 3px}
+.prospect-card.s-da_contattare::before{background:var(--muted)}
+.prospect-card.s-messaggio_inviato::before{background:var(--blue)}
+.prospect-card.s-risposta_ricevuta::before{background:var(--yellow)}
+.prospect-card.s-call_fissata::before{background:var(--purple)}
+.prospect-card.s-proposta_inviata::before{background:var(--accent2)}
+.prospect-card.s-cliente::before{background:var(--green)}
+.prospect-card.s-perso::before{background:var(--red)}
+.prospect-card:hover{border-color:rgba(124,92,252,0.25);transform:translateY(-1px)}
+.prospect-card.expanded{border-color:rgba(124,92,252,0.35)}
+.pc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:.6rem}
+.pc-name{font-weight:700;font-size:.95rem}
+.pc-meta{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.3rem}
+.badge{font-size:.68rem;font-weight:600;padding:.15rem .55rem;border-radius:999px;white-space:nowrap}
+.badge-settore{background:var(--accent-glow);color:var(--accent2)}
+.badge-zona{background:rgba(255,255,255,0.06);color:var(--muted)}
+.badge-stato{font-size:.7rem;padding:.2rem .6rem}
+.badge-da_contattare{background:rgba(255,255,255,0.08);color:var(--muted)}
+.badge-messaggio_inviato{background:var(--blue-bg);color:var(--blue)}
+.badge-risposta_ricevuta{background:var(--yellow-bg);color:var(--yellow)}
+.badge-call_fissata{background:var(--purple-bg);color:var(--purple)}
+.badge-proposta_inviata{background:var(--accent-glow);color:var(--accent2)}
+.badge-cliente{background:var(--green-bg);color:var(--green)}
+.badge-perso{background:var(--red-bg);color:var(--red)}
+
+.pc-detail{margin-top:.6rem;padding-top:.6rem;border-top:1px solid var(--border);display:none}
+.prospect-card.expanded .pc-detail{display:block}
+.pc-field{display:flex;gap:.5rem;margin-bottom:.4rem;font-size:.8rem}
+.pc-field-label{color:var(--muted);min-width:90px;flex-shrink:0}
+.pc-field-value{color:var(--text)}
+.pc-actions{display:flex;gap:.4rem;margin-top:.8rem;flex-wrap:wrap}
+
+/* TIMELINE */
+.timeline{margin-top:.8rem}
+.timeline-item{display:flex;gap:.6rem;padding:.4rem 0;font-size:.75rem;border-left:2px solid var(--border);margin-left:4px;padding-left:.8rem}
+.timeline-item:last-child{border-left-color:transparent}
+.timeline-date{color:var(--muted);min-width:70px;flex-shrink:0}
+.timeline-text{color:var(--text)}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;display:none;align-items:center;justify-content:center;padding:1rem}
+.modal-overlay.show{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:16px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;padding:1.5rem}
+.modal h2{font-size:1.1rem;font-weight:700;margin-bottom:1.2rem}
+.form-group{margin-bottom:1rem}
+.form-group label{display:block;font-size:.78rem;font-weight:600;color:var(--muted);margin-bottom:.3rem}
+.form-group input,.form-group select,.form-group textarea{width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:.5rem .7rem;border-radius:8px;font-size:.85rem;outline:none;font-family:inherit}
+.form-group textarea{min-height:70px;resize:vertical}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--accent)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
+.modal-btns{display:flex;gap:.6rem;justify-content:flex-end;margin-top:1.2rem}
+
+/* TEMPLATES */
+.templates-section{padding:1rem}
+.template-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:.8rem}
+.template-card h4{font-size:.85rem;font-weight:700;margin-bottom:.2rem}
+.template-type{font-size:.7rem;color:var(--muted);margin-bottom:.6rem}
+.template-text{font-size:.82rem;color:var(--text);background:var(--bg3);border-radius:8px;padding:.7rem;line-height:1.5;margin-bottom:.5rem;white-space:pre-wrap}
+.copy-btn{font-size:.72rem;color:var(--accent2);cursor:pointer;font-weight:600}
+.copy-btn:hover{text-decoration:underline}
+.copied{color:var(--green)!important}
+
+/* TRACKER */
+.tracker-section{padding:1rem}
+.todo-item{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:.8rem 1rem;margin-bottom:.5rem;display:flex;align-items:flex-start;gap:.7rem}
+.todo-check{width:20px;height:20px;border:2px solid var(--border2);border-radius:6px;cursor:pointer;flex-shrink:0;margin-top:.1rem;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.todo-check.done{background:var(--green);border-color:var(--green)}
+.todo-check.done::after{content:'✓';color:#fff;font-size:.7rem;font-weight:800}
+.todo-content{flex:1}
+.todo-text{font-size:.85rem}
+.todo-text.done{text-decoration:line-through;color:var(--muted)}
+.todo-meta{font-size:.7rem;color:var(--muted);margin-top:.2rem}
+
+/* EMPTY STATE */
+.empty{text-align:center;padding:3rem 1rem;color:var(--muted)}
+.empty-icon{font-size:2.5rem;margin-bottom:.8rem}
+.empty p{font-size:.9rem}
+
+/* SETTINGS BAR */
+.settings-bar{padding:1rem;background:var(--bg2);border-top:1px solid var(--border)}
+.settings-bar summary{font-size:.8rem;font-weight:600;color:var(--muted);cursor:pointer}
+.settings-content{margin-top:.8rem;display:flex;flex-direction:column;gap:.5rem}
+.settings-content label{font-size:.75rem;color:var(--muted)}
+.settings-content input{background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:.4rem .6rem;border-radius:6px;font-size:.8rem;width:100%;max-width:350px}
+
+/* RESPONSIVE */
+@media(max-width:600px){
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+  .form-row{grid-template-columns:1fr}
+  .toolbar{flex-direction:column}
+  .toolbar select,.toolbar input{width:100%}
+  .funnel-bar-label{width:80px;font-size:.7rem}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-brand">Botteg<span>AI</span> CRM</div>
+  <div class="topbar-sync" id="syncStatus"><div class="dot offline"></div>Non configurato</div>
+</div>
+
+<div class="tabs" id="tabs">
+  <div class="tab active" data-tab="dashboard">📊 Dashboard</div>
+  <div class="tab" data-tab="prospects">👥 Prospect</div>
+  <div class="tab" data-tab="templates">📝 Template</div>
+  <div class="tab" data-tab="tracker">✅ Tracker</div>
+</div>
+
+<!-- DASHBOARD -->
+<div class="view" id="v-dashboard">
+  <div class="dashboard">
+    <div class="stats-grid" id="statsGrid"></div>
+    <div class="funnel" id="funnel">
+      <h3>🔄 Pipeline</h3>
+      <div id="funnelBars"></div>
+    </div>
+    <div class="funnel">
+      <h3>📅 Prossime azioni</h3>
+      <div id="nextActions"></div>
+    </div>
+  </div>
+</div>
+
+<!-- PROSPECTS -->
+<div class="view" id="v-prospects" style="display:none">
+  <div class="prospect-section">
+    <div class="toolbar">
+      <input type="text" id="searchInput" placeholder="🔍 Cerca attività...">
+      <select id="filterSettore"><option value="">Tutti i settori</option></select>
+      <select id="filterStato"><option value="">Tutti gli stati</option></select>
+      <button class="btn btn-primary" onclick="openModal()">+ Nuovo</button>
+    </div>
+    <div class="prospect-list" id="prospectList"></div>
+  </div>
+</div>
+
+<!-- TEMPLATES -->
+<div class="view" id="v-templates" style="display:none">
+  <div class="templates-section" id="templatesList"></div>
+</div>
+
+<!-- TRACKER -->
+<div class="view" id="v-tracker" style="display:none">
+  <div class="tracker-section">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+      <h3 style="font-size:.95rem;font-weight:700">Prossime azioni</h3>
+      <button class="btn btn-primary btn-sm" onclick="addTodo()">+ Azione</button>
+    </div>
+    <div id="todoList"></div>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<details class="settings-bar">
+  <summary>⚙️ Configurazione JSONBin</summary>
+  <div class="settings-content">
+    <label>API Key</label>
+    <input type="password" id="cfgApiKey" placeholder="$2a$10$..." oninput="saveConfig()">
+    <label>Bin ID</label>
+    <input type="text" id="cfgBinId" placeholder="6..." oninput="saveConfig()">
+    <button class="btn btn-primary btn-sm" style="margin-top:.5rem;align-self:flex-start" onclick="syncFromRemote()">🔄 Sync ora</button>
+  </div>
+</details>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h2 id="modalTitle">Nuovo Prospect</h2>
+    <input type="hidden" id="editId">
+    <div class="form-group">
+      <label>Nome attività *</label>
+      <input type="text" id="fName" placeholder="es. Trattoria Da Mario">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Settore</label>
+        <select id="fSettore">
+          <option value="">—</option>
+          <option>Ristorante/Bar</option>
+          <option>Studio Medico</option>
+          <option>Fisioterapista</option>
+          <option>Agenzia Immobiliare</option>
+          <option>Artigiano/Tecnico</option>
+          <option>Studio Legale</option>
+          <option>Negozio/Retail</option>
+          <option>Palestra/Wellness</option>
+          <option>Studio Progettazione</option>
+          <option>Altro</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Zona</label>
+        <select id="fZona">
+          <option value="">—</option>
+          <option>Villafranca</option>
+          <option>Verona Centro</option>
+          <option>Verona Sud</option>
+          <option>Verona Nord</option>
+          <option>Sommacampagna</option>
+          <option>Valeggio</option>
+          <option>Peschiera</option>
+          <option>Bussolengo</option>
+          <option>San Giovanni Lupatoto</option>
+          <option>Altro</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Contatto (nome persona)</label>
+      <input type="text" id="fContatto" placeholder="es. Marco Rossi">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Telefono/WhatsApp</label>
+        <input type="tel" id="fTel" placeholder="+39 ...">
+      </div>
+      <div class="form-group">
+        <label>Instagram</label>
+        <input type="text" id="fIg" placeholder="@...">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="fEmail" placeholder="info@...">
+    </div>
+    <div class="form-group">
+      <label>Stato</label>
+      <select id="fStato">
+        <option value="da_contattare">Da contattare</option>
+        <option value="messaggio_inviato">Messaggio inviato</option>
+        <option value="risposta_ricevuta">Risposta ricevuta</option>
+        <option value="call_fissata">Call fissata</option>
+        <option value="proposta_inviata">Proposta inviata</option>
+        <option value="cliente">Cliente ✅</option>
+        <option value="perso">Perso ❌</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Dolore identificato</label>
+      <textarea id="fDolore" placeholder="Qual è il problema principale che ha questa attività?"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Prossima azione</label>
+      <input type="text" id="fAzione" placeholder="es. Mandare DM su Instagram">
+    </div>
+    <div class="form-group">
+      <label>Note</label>
+      <textarea id="fNote" placeholder="Qualsiasi info utile..."></textarea>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" onclick="closeModal()">Annulla</button>
+      <button class="btn btn-danger" id="btnDelete" style="display:none" onclick="deleteProspect()">Elimina</button>
+      <button class="btn btn-primary" onclick="saveProspect()">Salva</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── DATA ──
+let data = {
+  prospects: [],
+  todos: [],
+  config: { apiKey: '$2a$10$XUNT7t3ISpGoQlbJH5dvj.TD7qKNtNMeegop2pauFFobzySLbU18i', binId: '69c965fd5fdde57455101c49' }
+};
+
+const STATI = {
+  da_contattare: { label: 'Da contattare', color: 'var(--muted)' },
+  messaggio_inviato: { label: 'Messaggio inviato', color: 'var(--blue)' },
+  risposta_ricevuta: { label: 'Risposta ricevuta', color: 'var(--yellow)' },
+  call_fissata: { label: 'Call fissata', color: 'var(--purple)' },
+  proposta_inviata: { label: 'Proposta inviata', color: 'var(--accent2)' },
+  cliente: { label: 'Cliente ✅', color: 'var(--green)' },
+  perso: { label: 'Perso ❌', color: 'var(--red)' }
+};
+
+const TEMPLATES = [
+  { settore: 'Ristorante/Bar', tipo: 'DM Instagram', testo: `Ciao! Sono Cristiano, mi occupo di automazioni AI per attività locali. Ho visto il vostro profilo e mi è venuta un'idea su come potreste gestire prenotazioni e risposte ai clienti in automatico, senza perdere il tocco personale. Vi andrebbe una chiacchierata veloce di 15 min? Zero impegno 🙂` },
+  { settore: 'Ristorante/Bar', tipo: 'WhatsApp', testo: `Buongiorno! Sono Cristiano di BottegAI. Mi occupo di automazioni intelligenti per ristoranti e locali nella zona di Verona. Aiuto a gestire prenotazioni, risposte WhatsApp e recensioni Google in automatico. Le andrebbe una chiacchierata di 15 minuti per capire se posso esserle utile? Nessun impegno.` },
+  { settore: 'Studio Medico', tipo: 'DM Instagram', testo: `Buongiorno! Sono Cristiano, aiuto studi medici nella zona di Verona ad automatizzare appuntamenti, promemoria e comunicazioni con i pazienti usando l'AI. Ho un'idea specifica per il vostro studio. Posso raccontarvela in 15 minuti?` },
+  { settore: 'Studio Medico', tipo: 'WhatsApp', testo: `Buongiorno Dottore/ssa, sono Cristiano di BottegAI. Lavoro con studi medici della zona per automatizzare gestione appuntamenti, promemoria pazienti e disdette. Le rubo 15 minuti per mostrarle come funziona? Zero costo, zero impegno.` },
+  { settore: 'Agenzia Immobiliare', tipo: 'DM Instagram', testo: `Ciao! Sono Cristiano, mi occupo di automazioni AI per attività locali. Ho notato che lavorate con molti annunci — ho un sistema che può gestire in automatico il follow-up con i lead e le risposte alle richieste. 15 minuti per una chiacchierata? 🏠` },
+  { settore: 'Agenzia Immobiliare', tipo: 'WhatsApp', testo: `Buongiorno, sono Cristiano di BottegAI. Aiuto agenzie immobiliari a non perdere lead: follow-up automatico dopo ogni richiesta, gestione recensioni, risposte intelligenti. Le va un caffè per parlarne? 15 minuti, zero impegno.` },
+  { settore: 'Artigiano/Tecnico', tipo: 'DM Instagram', testo: `Ciao! Sono Cristiano, sono anche io un tecnico di professione. Ho creato un sistema AI che aiuta artigiani e tecnici a gestire preventivi, clienti e follow-up senza impazzire con WhatsApp e fogli Excel. Ti va di saperne di più?` },
+  { settore: 'Artigiano/Tecnico', tipo: 'WhatsApp', testo: `Buongiorno, sono Cristiano di BottegAI. Da tecnico a tecnico: ho costruito un sistema che gestisce in automatico richieste preventivo, follow-up clienti e organizzazione interventi. 15 minuti per mostrarle come funziona?` },
+  { settore: 'Palestra/Wellness', tipo: 'DM Instagram', testo: `Ciao! Sono Cristiano di BottegAI. Aiuto palestre e centri wellness ad automatizzare iscrizioni, promemoria lezioni e comunicazioni con i clienti tramite AI. Vi andrebbe una chiacchierata veloce per capire se posso esservi utile?` },
+  { settore: 'Palestra/Wellness', tipo: 'WhatsApp', testo: `Buongiorno, sono Cristiano di BottegAI. Mi occupo di automazioni AI per centri wellness e palestre: gestione iscrizioni, promemoria automatici, follow-up clienti. Le va un caffè di 15 minuti per parlarne? Zero impegno.` },
+];
+
+// ── STORAGE ──
+function loadLocal() {
+  try {
+    const saved = localStorage.getItem('bottegai_crm');
+    if (saved) data = { ...data, ...JSON.parse(saved) };
+  } catch(e) {}
+  document.getElementById('cfgApiKey').value = data.config.apiKey || '';
+  document.getElementById('cfgBinId').value = data.config.binId || '';
+}
+
+function saveLocal() {
+  localStorage.setItem('bottegai_crm', JSON.stringify(data));
+}
+
+function saveConfig() {
+  data.config.apiKey = document.getElementById('cfgApiKey').value.trim();
+  data.config.binId = document.getElementById('cfgBinId').value.trim();
+  saveLocal();
+  updateSyncStatus();
+}
+
+async function syncToRemote() {
+  if (!data.config.apiKey || !data.config.binId) return;
+  const ss = document.getElementById('syncStatus');
+  ss.innerHTML = '<div class="dot syncing"></div>Sync...';
+  try {
+    await fetch(`https://api.jsonbin.io/v3/b/${data.config.binId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Master-Key': data.config.apiKey },
+      body: JSON.stringify({ prospects: data.prospects, todos: data.todos })
+    });
+    ss.innerHTML = '<div class="dot"></div>Sincronizzato';
+    setTimeout(() => updateSyncStatus(), 3000);
+  } catch(e) {
+    ss.innerHTML = '<div class="dot offline"></div>Errore sync';
+  }
+}
+
+async function syncFromRemote() {
+  if (!data.config.apiKey || !data.config.binId) return alert('Inserisci API Key e Bin ID');
+  const ss = document.getElementById('syncStatus');
+  ss.innerHTML = '<div class="dot syncing"></div>Scaricando...';
+  try {
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${data.config.binId}/latest`, {
+      headers: { 'X-Master-Key': data.config.apiKey }
+    });
+    const json = await res.json();
+    if (json.record) {
+      if (json.record.prospects) data.prospects = json.record.prospects;
+      if (json.record.todos) data.todos = json.record.todos;
+      saveLocal();
+      renderAll();
+    }
+    ss.innerHTML = '<div class="dot"></div>Sincronizzato';
+  } catch(e) {
+    ss.innerHTML = '<div class="dot offline"></div>Errore sync';
+  }
+}
+
+function updateSyncStatus() {
+  const ss = document.getElementById('syncStatus');
+  if (data.config.apiKey && data.config.binId) {
+    ss.innerHTML = '<div class="dot"></div>Connesso';
+  } else {
+    ss.innerHTML = '<div class="dot offline"></div>Non configurato';
+  }
+}
+
+function save() {
+  saveLocal();
+  syncToRemote();
+}
+
+// ── TABS ──
+document.getElementById('tabs').addEventListener('click', e => {
+  const tab = e.target.closest('.tab');
+  if (!tab) return;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
+  tab.classList.add('active');
+  document.getElementById('v-' + tab.dataset.tab).style.display = 'block';
+});
+
+// ── DASHBOARD ──
+function renderDashboard() {
+  const p = data.prospects;
+  const counts = {};
+  Object.keys(STATI).forEach(k => counts[k] = 0);
+  p.forEach(x => { if (counts[x.stato] !== undefined) counts[x.stato]++; });
+  const total = p.length;
+
+  document.getElementById('statsGrid').innerHTML = `
+    <div class="stat-card accent"><div class="stat-num">${total}</div><div class="stat-label">Prospect totali</div></div>
+    <div class="stat-card blue"><div class="stat-num">${counts.messaggio_inviato}</div><div class="stat-label">Messaggi inviati</div></div>
+    <div class="stat-card yellow"><div class="stat-num">${counts.risposta_ricevuta + counts.call_fissata}</div><div class="stat-label">Conversazioni</div></div>
+    <div class="stat-card green"><div class="stat-num">${counts.cliente}</div><div class="stat-label">Clienti</div></div>
+  `;
+
+  const stages = ['da_contattare','messaggio_inviato','risposta_ricevuta','call_fissata','proposta_inviata','cliente'];
+  const maxCount = Math.max(...stages.map(s => counts[s]), 1);
+  document.getElementById('funnelBars').innerHTML = stages.map(s => {
+    const pct = total > 0 ? (counts[s] / total * 100) : 0;
+    const w = Math.max(pct, counts[s] > 0 ? 8 : 0);
+    return `<div class="funnel-bar-row">
+      <div class="funnel-bar-label">${STATI[s].label}</div>
+      <div class="funnel-bar-track"><div class="funnel-bar-fill" style="width:${w}%;background:${STATI[s].color}">${counts[s]}</div></div>
+    </div>`;
+  }).join('');
+
+  const withActions = p.filter(x => x.azione && x.stato !== 'cliente' && x.stato !== 'perso');
+  document.getElementById('nextActions').innerHTML = withActions.length > 0
+    ? withActions.slice(0, 8).map(x => `<div style="display:flex;gap:.6rem;padding:.5rem 0;border-bottom:1px solid var(--border);font-size:.82rem">
+        <span class="badge badge-${x.stato}" style="flex-shrink:0">${STATI[x.stato]?.label || x.stato}</span>
+        <strong>${x.name}</strong>
+        <span style="color:var(--muted);margin-left:auto">${x.azione}</span>
+      </div>`).join('')
+    : '<div class="empty"><p style="font-size:.82rem">Nessuna azione in programma. Aggiungi prospect e definisci le prossime azioni.</p></div>';
+}
+
+// ── PROSPECTS ──
+function renderProspects() {
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  const fSettore = document.getElementById('filterSettore').value;
+  const fStato = document.getElementById('filterStato').value;
+
+  let filtered = data.prospects.filter(p => {
+    if (search && !p.name.toLowerCase().includes(search) && !(p.contatto||'').toLowerCase().includes(search)) return false;
+    if (fSettore && p.settore !== fSettore) return false;
+    if (fStato && p.stato !== fStato) return false;
+    return true;
+  });
+
+  const list = document.getElementById('prospectList');
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="empty"><div class="empty-icon">👥</div><p>${data.prospects.length === 0 ? 'Nessun prospect ancora.<br>Premi <strong>+ Nuovo</strong> per iniziare!' : 'Nessun risultato con questi filtri.'}</p></div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(p => `
+    <div class="prospect-card s-${p.stato}" data-id="${p.id}" onclick="toggleCard(this)">
+      <div class="pc-top">
+        <div>
+          <div class="pc-name">${p.name}</div>
+          <div class="pc-meta">
+            ${p.settore ? `<span class="badge badge-settore">${p.settore}</span>` : ''}
+            ${p.zona ? `<span class="badge badge-zona">📍 ${p.zona}</span>` : ''}
+            <span class="badge badge-stato badge-${p.stato}">${STATI[p.stato]?.label || p.stato}</span>
+          </div>
+        </div>
+      </div>
+      <div class="pc-detail">
+        ${p.contatto ? `<div class="pc-field"><span class="pc-field-label">Contatto</span><span class="pc-field-value">${p.contatto}</span></div>` : ''}
+        ${p.tel ? `<div class="pc-field"><span class="pc-field-label">Tel/WhatsApp</span><span class="pc-field-value"><a href="https://wa.me/${p.tel.replace(/[^0-9+]/g,'')}" style="color:var(--green)">${p.tel}</a></span></div>` : ''}
+        ${p.ig ? `<div class="pc-field"><span class="pc-field-label">Instagram</span><span class="pc-field-value"><a href="https://instagram.com/${p.ig.replace('@','')}" style="color:var(--accent2)">${p.ig}</a></span></div>` : ''}
+        ${p.email ? `<div class="pc-field"><span class="pc-field-label">Email</span><span class="pc-field-value">${p.email}</span></div>` : ''}
+        ${p.dolore ? `<div class="pc-field"><span class="pc-field-label">Dolore</span><span class="pc-field-value">${p.dolore}</span></div>` : ''}
+        ${p.azione ? `<div class="pc-field"><span class="pc-field-label">Prossima azione</span><span class="pc-field-value" style="color:var(--accent2);font-weight:600">${p.azione}</span></div>` : ''}
+        ${p.note ? `<div class="pc-field"><span class="pc-field-label">Note</span><span class="pc-field-value">${p.note}</span></div>` : ''}
+        ${p.timeline && p.timeline.length ? `<div class="timeline">${p.timeline.map(t => `<div class="timeline-item"><span class="timeline-date">${t.date}</span><span class="timeline-text">${t.text}</span></div>`).join('')}</div>` : ''}
+        <div class="pc-actions">
+          <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();openModal('${p.id}')">✏️ Modifica</button>
+          <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();advanceStatus('${p.id}')">⏭ Avanza stato</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function toggleCard(el) { el.classList.toggle('expanded'); }
+
+function populateFilters() {
+  const settori = [...new Set(data.prospects.map(p => p.settore).filter(Boolean))];
+  const sel = document.getElementById('filterSettore');
+  sel.innerHTML = '<option value="">Tutti i settori</option>' + settori.map(s => `<option>${s}</option>`).join('');
+}
+
+document.getElementById('searchInput').addEventListener('input', renderProspects);
+document.getElementById('filterSettore').addEventListener('change', renderProspects);
+document.getElementById('filterStato').addEventListener('change', renderProspects);
+
+// ── MODAL ──
+function openModal(id) {
+  const modal = document.getElementById('modal');
+  const isEdit = !!id;
+  document.getElementById('modalTitle').textContent = isEdit ? 'Modifica Prospect' : 'Nuovo Prospect';
+  document.getElementById('btnDelete').style.display = isEdit ? 'inline-flex' : 'none';
+
+  if (isEdit) {
+    const p = data.prospects.find(x => x.id === id);
+    if (!p) return;
+    document.getElementById('editId').value = p.id;
+    document.getElementById('fName').value = p.name || '';
+    document.getElementById('fSettore').value = p.settore || '';
+    document.getElementById('fZona').value = p.zona || '';
+    document.getElementById('fContatto').value = p.contatto || '';
+    document.getElementById('fTel').value = p.tel || '';
+    document.getElementById('fIg').value = p.ig || '';
+    document.getElementById('fEmail').value = p.email || '';
+    document.getElementById('fStato').value = p.stato || 'da_contattare';
+    document.getElementById('fDolore').value = p.dolore || '';
+    document.getElementById('fAzione').value = p.azione || '';
+    document.getElementById('fNote').value = p.note || '';
+  } else {
+    document.getElementById('editId').value = '';
+    ['fName','fContatto','fTel','fIg','fEmail','fDolore','fAzione','fNote'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('fSettore').value = '';
+    document.getElementById('fZona').value = '';
+    document.getElementById('fStato').value = 'da_contattare';
+  }
+  modal.classList.add('show');
+}
+
+function closeModal() { document.getElementById('modal').classList.remove('show'); }
+
+function saveProspect() {
+  const name = document.getElementById('fName').value.trim();
+  if (!name) return alert('Inserisci il nome dell\'attività');
+
+  const editId = document.getElementById('editId').value;
+  const now = new Date().toLocaleDateString('it-IT');
+  const obj = {
+    name,
+    settore: document.getElementById('fSettore').value,
+    zona: document.getElementById('fZona').value,
+    contatto: document.getElementById('fContatto').value.trim(),
+    tel: document.getElementById('fTel').value.trim(),
+    ig: document.getElementById('fIg').value.trim(),
+    email: document.getElementById('fEmail').value.trim(),
+    stato: document.getElementById('fStato').value,
+    dolore: document.getElementById('fDolore').value.trim(),
+    azione: document.getElementById('fAzione').value.trim(),
+    note: document.getElementById('fNote').value.trim(),
+  };
+
+  if (editId) {
+    const idx = data.prospects.findIndex(x => x.id === editId);
+    if (idx >= 0) {
+      const old = data.prospects[idx];
+      if (old.stato !== obj.stato) {
+        if (!old.timeline) old.timeline = [];
+        old.timeline.unshift({ date: now, text: `${STATI[old.stato]?.label} → ${STATI[obj.stato]?.label}` });
+      }
+      data.prospects[idx] = { ...old, ...obj };
+    }
+  } else {
+    obj.id = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+    obj.createdAt = now;
+    obj.timeline = [{ date: now, text: 'Prospect aggiunto' }];
+    data.prospects.push(obj);
+  }
+
+  save();
+  closeModal();
+  renderAll();
+}
+
+function deleteProspect() {
+  const editId = document.getElementById('editId').value;
+  if (!editId) return;
+  if (!confirm('Eliminare questo prospect?')) return;
+  data.prospects = data.prospects.filter(x => x.id !== editId);
+  save();
+  closeModal();
+  renderAll();
+}
+
+function advanceStatus(id) {
+  const order = ['da_contattare','messaggio_inviato','risposta_ricevuta','call_fissata','proposta_inviata','cliente'];
+  const p = data.prospects.find(x => x.id === id);
+  if (!p) return;
+  const idx = order.indexOf(p.stato);
+  if (idx < 0 || idx >= order.length - 1) return;
+  const now = new Date().toLocaleDateString('it-IT');
+  if (!p.timeline) p.timeline = [];
+  const newStato = order[idx + 1];
+  p.timeline.unshift({ date: now, text: `${STATI[p.stato]?.label} → ${STATI[newStato]?.label}` });
+  p.stato = newStato;
+  save();
+  renderAll();
+}
+
+// ── TEMPLATES ──
+function renderTemplates() {
+  const list = document.getElementById('templatesList');
+  list.innerHTML = '<h3 style="font-size:.95rem;font-weight:700;margin-bottom:1rem">📝 Template messaggi per settore</h3>' +
+    TEMPLATES.map((t, i) => `
+    <div class="template-card">
+      <h4>${t.settore}</h4>
+      <div class="template-type">${t.tipo}</div>
+      <div class="template-text">${t.testo}</div>
+      <span class="copy-btn" id="copy${i}" onclick="copyTemplate(${i})">📋 Copia messaggio</span>
+    </div>
+  `).join('');
+}
+
+function copyTemplate(i) {
+  navigator.clipboard.writeText(TEMPLATES[i].testo).then(() => {
+    const el = document.getElementById('copy' + i);
+    el.textContent = '✅ Copiato!';
+    el.classList.add('copied');
+    setTimeout(() => { el.textContent = '📋 Copia messaggio'; el.classList.remove('copied'); }, 2000);
+  });
+}
+
+// ── TRACKER ──
+function renderTodos() {
+  const list = document.getElementById('todoList');
+  if (data.todos.length === 0) {
+    list.innerHTML = '<div class="empty"><div class="empty-icon">✅</div><p>Nessuna azione in lista.<br>Premi <strong>+ Azione</strong> per aggiungerne una.</p></div>';
+    return;
+  }
+  const sorted = [...data.todos].sort((a,b) => (a.done?1:0) - (b.done?1:0));
+  list.innerHTML = sorted.map(t => `
+    <div class="todo-item">
+      <div class="todo-check ${t.done?'done':''}" onclick="toggleTodo('${t.id}')"></div>
+      <div class="todo-content">
+        <div class="todo-text ${t.done?'done':''}">${t.text}</div>
+        <div class="todo-meta">${t.date}${t.prospect ? ` · ${t.prospect}` : ''}</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" style="flex-shrink:0" onclick="removeTodo('${t.id}')">✕</button>
+    </div>
+  `).join('');
+}
+
+function addTodo() {
+  const text = prompt('Descrivi l\'azione:');
+  if (!text) return;
+  data.todos.push({
+    id: Date.now().toString(36),
+    text,
+    date: new Date().toLocaleDateString('it-IT'),
+    done: false
+  });
+  save();
+  renderTodos();
+}
+
+function toggleTodo(id) {
+  const t = data.todos.find(x => x.id === id);
+  if (t) t.done = !t.done;
+  save();
+  renderTodos();
+}
+
+function removeTodo(id) {
+  data.todos = data.todos.filter(x => x.id !== id);
+  save();
+  renderTodos();
+}
+
+// ── RENDER ALL ──
+function renderAll() {
+  renderDashboard();
+  populateFilters();
+  renderProspects();
+  renderTemplates();
+  renderTodos();
+}
+
+// ── INIT ──
+loadLocal();
+updateSyncStatus();
+renderAll();
+
+// Close modal on overlay click
+document.getElementById('modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal')) closeModal();
+});
+</script>
+</body>
+</html>
