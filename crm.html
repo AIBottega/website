@@ -320,11 +320,10 @@ function sendEmail(id){
 const p=D.prospects.find(x=>x.id===id);if(!p||!p.email)return;
 const tplIdx=prompt('Quale template email?\n1 = Versione A (senza AI)\n2 = Versione B (con AI)');
 if(tplIdx!=='1'&&tplIdx!=='2')return;
-const tpl=tplIdx==='1'?TPL[2]:TPL[3];
 const subj=tplIdx==='1'?'Un progetto per le attività locali':"Un progetto con l'AI per le attività locali";
-const body=tpl.b;
-const mailto=`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(p.email)}&su=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`;
-window.open(mailto,'_blank');
+const body=tplIdx==='1'?TPL[2].b:TPL[3].b;
+const gmailUrl=`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(p.email)}&su=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`;
+const a=document.createElement('a');a.href=gmailUrl;a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();document.body.removeChild(a);
 }
 
 function openModal(id){const m=document.getElementById('modal'),e=!!id;document.getElementById('modalTitle').textContent=e?'Modifica Prospect':'Nuovo Prospect';document.getElementById('btnDelete').style.display=e?'inline-flex':'none';
